@@ -49,6 +49,5 @@ def run(plan, args):
             "-c",
             "celestia light start",
         ],
-        ]
     ),
 )
