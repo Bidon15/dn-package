@@ -36,7 +36,7 @@ def render_node_config(plan, args):
 
 def run(plan, args):
     plan.add_service(
-    name = "dependant",
+    name = "light",
     config = ServiceConfig(
         image= "ghcr.io/celestiaorg/celestia-node:v0.12.4",
         env_vars = {
