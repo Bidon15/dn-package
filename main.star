@@ -44,5 +44,11 @@ def run(plan, args):
             "P2P_NETWORK": "mocha",
             "NODE_STORE": "/opt/node-store",
         },
+        entrypoint=[
+            "bash",
+            "-c",
+            "celestia light start",
+        ],
+        ]
     ),
 )
