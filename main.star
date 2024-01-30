@@ -32,7 +32,7 @@ def render_node_config(plan, args):
             ),
         }
     )
-    return chainlink_config_files
+    return da_node_config_file
 
 def run(plan, args):
     plan.add_service(
