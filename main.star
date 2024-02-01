@@ -35,19 +35,34 @@ def render_node_config(plan, args):
     return da_node_config_file
 
 def run(plan, args):
+    results = plan.run_sh(
+        run="whoami && celestia light init --node.store=/home/celestia/.celestia-light",
+        image= "ghcr.io/celestiaorg/celestia-node:v0.12.4",
+        store=[
+            "/home/celestia/.celestia-light/*"
+        ],
+    )
+    plan.print(results.files_artifacts)
+
     plan.add_service(
-    name = "light",
+    name = "celestia-light",
     config = ServiceConfig(
         image= "ghcr.io/celestiaorg/celestia-node:v0.12.4",
         env_vars = {
             "NODE_TYPE": "light",
-            "P2P_NETWORK": "mocha",
-            "NODE_STORE": "/opt/node-store",
+            "P2P_NETWORK": "celestia",
+            "NODE_STORE": "/home/celestia/.celestia-light",
+        },
+        files={
+            "/home/celestia/.celestia-light": Directory(
+                artifact_names=[results.files_artifacts[0]],
+            )
         },
         entrypoint=[
             "bash",
             "-c",
-            "celestia light start",
+            "celestia light start --node.store=/home/celestia/.celestia-light",
         ],
+        user = User(uid=0),
     ),
 )
