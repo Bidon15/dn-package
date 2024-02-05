@@ -35,11 +35,15 @@ def render_node_config(plan, args):
     return da_node_config_file
 
 def run(plan, args):
+    P2P_NETWORK = args.get("p2p.network")
+    CORE_IP = args.get("core.ip")
+    RPC_ADDR = args.get("rpc.addr")
+    TRUSTED_HASH = args.get("headers.trusted-hash")
     results = plan.run_sh(
-        run="whoami && celestia light init --node.store=/home/celestia/.celestia-light",
+        run="whoami && celestia light init --p2p.network {0} --node.store=/home/celestia/node-store".format(P2P_NETWORK),
         image= "ghcr.io/celestiaorg/celestia-node:v0.12.4",
         store=[
-            "/home/celestia/.celestia-light/*"
+            "/home/celestia/node-store/*"
         ],
     )
     plan.print(results.files_artifacts)
@@ -50,18 +54,33 @@ def run(plan, args):
         image= "ghcr.io/celestiaorg/celestia-node:v0.12.4",
         env_vars = {
             "NODE_TYPE": "light",
-            "P2P_NETWORK": "celestia",
-            "NODE_STORE": "/home/celestia/.celestia-light",
+            "P2P_NETWORK": "mocha",
+            "NODE_STORE": "/home/celestia/node-store",
+        },
+        ports = {
+        "rpc": PortSpec(
+                # The port number which we want to expose
+                # MANDATORY
+                number = 26658,
+
+                # Transport protocol for the port (can be either "TCP" or "UDP")
+                # Optional (DEFAULT:"TCP")
+                transport_protocol = "TCP",
+
+                # Application protocol for the port
+                # Optional
+                application_protocol = "http",
+            ),
         },
         files={
-            "/home/celestia/.celestia-light": Directory(
+            "/home/celestia/node-store": Directory(
                 artifact_names=[results.files_artifacts[0]],
-            )
+            ),
         },
         entrypoint=[
             "bash",
             "-c",
-            "celestia light start --node.store=/home/celestia/.celestia-light",
+            "celestia light start --p2p.network {0} --core.ip {1} --rpc.addr {2}  --node.store=/home/celestia/node-store".format(P2P_NETWORK, CORE_IP, RPC_ADDR),
         ],
         user = User(uid=0),
     ),
