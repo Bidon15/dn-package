@@ -1,20 +1,6 @@
 DEFAULT_NODE_STORE = "/opt/node-store"
 DA_IMAGE = "ghcr.io/celestiaorg/celestia-node:v0.12.4"
 
-def init_node(plan, args):
-    node_store_path = args.get("node.store") or DEFAULT_NODE_STORE
-
-    # Use node_store_path for further processing
-    plan.print("Using node store path: " + node_store_path)
-
-    if node_store_path:
-        plan.print("Node store is not empty, skipping node initialization")
-        return False
-    else:
-        plan.print("Node store is empty, initializing node")
-
-        return True
-
 def render_node_config(plan, args):
     config_file_template = read_file("./configs/light-config.toml.tmpl")
     da_node_config_file = plan.render_templates(
@@ -28,6 +14,8 @@ def render_node_config(plan, args):
                     "CORE_GRPC_PORT": args.get("core.grpc.port"),
                     "RPC_ADDRESS": args.get("rpc.address"),
                     "RPC_PORT": args.get("rpc.port"),
+                    "TRUSTED_HASH": args.get("headers.trusted-hash"),
+                    "SAMPLE_FROM": args.get("daser.sample-from")
                 }
             ),
         }
@@ -36,27 +24,21 @@ def render_node_config(plan, args):
 
 def run(plan, args):
     P2P_NETWORK = args.get("p2p.network")
-    CORE_IP = args.get("core.ip")
-    RPC_ADDR = args.get("rpc.addr")
-    TRUSTED_HASH = args.get("headers.trusted-hash")
+
     results = plan.run_sh(
         run="whoami && celestia light init --p2p.network {0} --node.store=/home/celestia/node-store".format(P2P_NETWORK),
         image= "ghcr.io/celestiaorg/celestia-node:v0.12.4",
         store=[
-            "/home/celestia/node-store/*"
+            "/home/celestia/node-store/keys",
         ],
     )
     plan.print(results.files_artifacts)
 
+    cfg_file = render_node_config(plan, args)
     plan.add_service(
     name = "celestia-light",
     config = ServiceConfig(
         image= "ghcr.io/celestiaorg/celestia-node:v0.12.4",
-        env_vars = {
-            "NODE_TYPE": "light",
-            "P2P_NETWORK": "mocha",
-            "NODE_STORE": "/home/celestia/node-store",
-        },
         ports = {
         "rpc": PortSpec(
                 # The port number which we want to expose
@@ -73,14 +55,18 @@ def run(plan, args):
             ),
         },
         files={
-            "/home/celestia/node-store": Directory(
+            "/home/celestia/node-store/": cfg_file,
+            "/home/celestia/node-store/keys": Directory(
                 artifact_names=[results.files_artifacts[0]],
             ),
+            "/home/celestia/node-store/data": Directory(
+                persistent_key="data-directory"
+            )
         },
         entrypoint=[
             "bash",
             "-c",
-            "celestia light start --p2p.network {0} --core.ip {1} --rpc.addr {2}  --node.store=/home/celestia/node-store".format(P2P_NETWORK, CORE_IP, RPC_ADDR),
+            "celestia light start --p2p.network {0} --node.store=/home/celestia/node-store".format(P2P_NETWORK),
         ],
         user = User(uid=0),
     ),
