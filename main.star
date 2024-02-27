@@ -2,7 +2,7 @@ DEFAULT_NODE_STORE = "/opt/node-store"
 DA_IMAGE = "ghcr.io/celestiaorg/celestia-node:v0.12.4"
 
 def render_node_config(plan, args):
-    config_file_template = read_file("./configs/light-config.toml.tmpl")
+    config_file_template = read_file("./configs/config.toml.tmpl")
     da_node_config_file = plan.render_templates(
         name="light-node-configuration",
         config={
@@ -12,7 +12,7 @@ def render_node_config(plan, args):
                     "CORE_IP": args.get("core.ip"),
                     "CORE_RPC_PORT": args.get("core.rpc.port"),
                     "CORE_GRPC_PORT": args.get("core.grpc.port"),
-                    "RPC_ADDRESS": args.get("rpc.address"),
+                    "RPC_ADDRESS": args.get("rpc.addr"),
                     "RPC_PORT": args.get("rpc.port"),
                     "TRUSTED_HASH": args.get("headers.trusted-hash"),
                     "SAMPLE_FROM": args.get("daser.sample-from")
@@ -29,12 +29,13 @@ def run(plan, args):
         run="whoami && celestia light init --p2p.network {0} --node.store=/home/celestia/node-store".format(P2P_NETWORK),
         image= "ghcr.io/celestiaorg/celestia-node:v0.12.4",
         store=[
-            "/home/celestia/node-store/keys",
+            "/home/celestia/node-store/keys/*",
         ],
     )
     plan.print(results.files_artifacts)
 
     cfg_file = render_node_config(plan, args)
+
     plan.add_service(
     name = "celestia-light",
     config = ServiceConfig(
@@ -66,7 +67,7 @@ def run(plan, args):
         entrypoint=[
             "bash",
             "-c",
-            "celestia light start --p2p.network {0} --node.store=/home/celestia/node-store".format(P2P_NETWORK),
+            "cat /home/celestia/node-store/config.toml && celestia light start --p2p.network {0} --node.store=/home/celestia/node-store".format(P2P_NETWORK),
         ],
         user = User(uid=0),
     ),
